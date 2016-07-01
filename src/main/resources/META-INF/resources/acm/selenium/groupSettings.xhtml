@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:p="http://primefaces.org/ui">
+
+<ui:composition>
+
+	<h:outputText
+		value="#{seleniumGroupBean.setGroupId(editGroupBean.groupId)}" />
+
+	<h3>Associated Resources</h3>
+	<h:panelGrid columns="2">
+		<p:selectOneListbox id="resources_list"
+			value="#{seleniumGroupBean.selectedResource}"
+			converter="#{seleniumGroupBean.resourcesConverter}"
+			style="height: #{seleniumGroupBean.calculateResourceBoxHeight}px; width: 300px">
+			<f:selectItems value="#{seleniumGroupBean.resourcesItems}" />
+		</p:selectOneListbox>
+		<h:panelGroup layout="block" style="text-align: center">
+			<p:commandButton value="Up" action="#{seleniumGroupBean.moveUp}"
+				process="resources_list" update="resources_list" />
+			<br />
+			<br />
+			<p:commandButton value="Down" action="#{seleniumGroupBean.moveDown}"
+				process="resources_list" update="resources_list" />
+			<br />
+			<br />
+			<p:commandButton value="Delete"
+				action="#{seleniumGroupBean.deleteResource}"
+				process="resources_list" update="resources_list" />
+			<br />
+			<br />
+		</h:panelGroup>
+	</h:panelGrid>
+
+	<p:fieldset legend="Add Selenium Resource">
+		<h:panelGrid columns="3" id="add_resource">
+			<p:outputLabel for="seleniumUrl" value="Selenium URL:" />
+			<p:inputText id="seleniumUrl"
+				value="#{seleniumGroupBean.newSeleniumUrl}" size="25" />
+			<p:message for="seleniumUrl" />
+		</h:panelGrid>
+
+		<br />
+		<p:commandButton value="Add resource"
+			actionListener="#{seleniumGroupBean.addResource}"
+			process="add_resource" update="add_resource resources_list" />
+	</p:fieldset>
+	<br />
+	<h:panelGrid columns="2" with="300px">
+		<p:commandButton value="Save resources"
+			actionListener="#{seleniumGroupBean.save}" process="@this"
+			update="messagebox" />
+		<p:ajaxStatus>
+			<f:facet name="default">
+				<h:outputText value="" />
+			</f:facet>
+			<f:facet name="start">
+				<p:graphicImage name="ajaxStatus.gif" library="acm" />
+			</f:facet>
+			<f:facet name="complete">
+				<h:outputText value="" />
+			</f:facet>
+		</p:ajaxStatus>
+	</h:panelGrid>
+
+
+</ui:composition>
+</html>

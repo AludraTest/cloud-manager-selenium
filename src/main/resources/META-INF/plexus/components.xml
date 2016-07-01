@@ -1,0 +1,25 @@
+<component-set>
+  <components>
+    <component>
+      <role>org.aludratest.cloud.rest.RestConnector</role>
+      <role-hint>selenium-resource</role-hint>
+      <implementation>org.aludratest.cloud.selenium.impl.rest.SeleniumResourceEndpoint</implementation>
+      <description></description>
+      <isolated-realm>false</isolated-realm>
+    </component>
+    <component>
+      <role>org.aludratest.cloud.module.ResourceModule</role>
+      <role-hint>selenium</role-hint>
+      <implementation>org.aludratest.cloud.selenium.impl.SeleniumResourceModule</implementation>
+      <description></description>
+      <isolated-realm>false</isolated-realm>
+    </component>
+    <component>
+      <role>org.aludratest.cloud.resource.writer.ResourceWriterFactory</role>
+      <role-hint>selenium</role-hint>
+      <implementation>org.aludratest.cloud.selenium.impl.SeleniumResourceWriterFactory</implementation>
+      <description></description>
+      <isolated-realm>false</isolated-realm>
+    </component>
+  </components>
+</component-set>

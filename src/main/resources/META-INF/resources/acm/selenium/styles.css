@@ -1,0 +1,18 @@
+.ui-icon.menu-icon-selenium {
+background-image: url("#{resource['acm:selenium/selenium-icon.png']}");
+background-repeat: no-repeat;
+}
+
+.ui-datalist.no-border,
+.ui-datalist.no-border > .ui-datalist-content {
+	border: 0;
+}
+
+.ui-icon.fa {
+	text-indent: 0px !important;
+}
+
+button .ui-icon.fa {
+	color: #38667f;
+	padding-top: 1px;
+}

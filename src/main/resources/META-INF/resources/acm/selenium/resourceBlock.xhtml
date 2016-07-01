@@ -1,0 +1,40 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:p="http://primefaces.org/ui">
+
+<ui:composition>
+	<h:panelGroup id="single_selenium_resource">
+		<h:panelGroup id="sel_res_block" styleClass="resource resource-#{res.state}" layout="block">
+			<div style="display: table; height: 100%; width: 100%; position: relative;">
+				<div style="display: table-cell; vertical-align: middle">
+					<div class="resource-text" style="width: 100%; text-align: center">
+						<div style="position: absolute; top: 2px; right: 2px; height: 60px;">
+							<p:commandButton icon="#{seleniumResourceBean.isResourceLocked(res.toString()) ? 'ui-icon-locked' : 'ui-icon-unlocked'}" 
+								style="width: 20px; height: 20px" actionListener="#{seleniumResourceBean.lockResource}" title="#{seleniumResourceBean.isResourceLocked(res.toString()) ? 'Disable' : 'Enable'} maintenance mode" update="single_selenium_resource">
+								<f:param name="resourceName" value="#{res.toString()}" />
+							</p:commandButton><br />
+							<p:commandButton icon="ui-icon-closethick" 
+								style="width: 20px; height: 20px" actionListener="#{seleniumResourceBean.closeResourceSessions}" title="Force close of all Selenium 2 sessions on this machine">
+								<f:param name="resourceName" value="#{res.toString()}" />
+							</p:commandButton><br />
+							<p:commandButton icon="fa fa-fw fa-camera"
+								style="width: 20px; height: 20px" actionListener="#{seleniumResourceBean.updateScreenshot}" title="Take and display a screenshot of this machine"
+								process="@this" update=":mainForm:selenium_dialog_body" onsuccess="PF('seleniumDialog').show()">
+								<f:param name="resourceName" value="#{res.toString()}" />
+							</p:commandButton><br />
+						</div>
+						<span class="resource-name">#{res}</span><br />
+						<span class="resource-state">#{res.state}</span>
+						<h:panelGroup layout="inline" class="resource-user" rendered="#{not empty res.userName}"><br />#{res.userName}<h:outputText rendered="#{not empty res.jobName}" value="&#160;(#{res.jobName})" /></h:panelGroup>
+					</div>
+				</div>
+			</div>
+		</h:panelGroup>
+	</h:panelGroup>
+</ui:composition>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:p="http://primefaces.org/ui">
+
+<ui:composition>
+	<p:fieldset legend="Selenium">
+		<p>These are the settings for Selenium Resources.</p>
+		<p:panelGrid columns="3" styleClass="configTable" columnClasses="label-column,wide-column,help-column">
+			<p:outputLabel for="selenium_port" value="TCP Port to use for the Selenium Proxy Server:" />
+			<p:inputText id="selenium_port" value="#{config['port']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="A proxy server is started on this server which proxies all Selenium requests to the different clients. This proxy server will listen on this port. &lt;br/> Please make sure that this port is not blocked by any firewall." />
+			</ui:include>
+			
+			<p:outputLabel for="selenium_proxy_max_threads" value="Max number of Threads for Selenium Proxy Server:" />
+			<p:inputText id="selenium_proxy_max_threads" value="#{config['maxProxyThreads']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="The maximum number of requests which should be handled by the Selenium Proxy Server in parallel. This should be no lower than the number of available Selenium resources." />
+			</ui:include>
+			
+			<p:outputLabel for="selenium_proxy_max_queue" value="Max queue size for Selenium Proxy Server:" />
+			<p:inputText id="selenium_proxy_max_queue" value="#{config['maxProxyQueueSize']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="The maximum number of requests which should be put into a queue when no more Threads are available. If the queue grows to this size, newly incoming requests get an HTTP error." />
+			</ui:include>
+			
+			<p:outputLabel for="selenium_timeout" value="Maximum timeout when connecting to Selenium clients (in seconds):" />
+			<p:inputText id="selenium_timeout" value="#{config['seleniumTimeout']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="When connecting to Selenium clients or sending queries to them, this is the timeout to use (in seconds).&lt;br />Keep small to quickly detect disconnected clients (but large enough to not lose them in slow networks)." />
+			</ui:include>
+			
+			<p:outputLabel for="selenium_health" value="Interval for Selenium Health check (in seconds):" />
+			<p:inputText id="selenium_health" value="#{config['healthCheckInterval']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="For each registered Selenium Client, every N seconds, the health of the Client will be queried.&lt;br/>If there is no response, it is set to DISCONNECTED. If it was disconnected and there is a response, it is set to READY." />
+			</ui:include>
+			
+			<p:outputLabel for="selenium_idle" value="Maximum idle time between two Selenium commands (in seconds):" />
+			<p:inputText id="selenium_idle" value="#{config['maxIdleTimeBetweenCommands']}" size="5">
+				<f:convertNumber integerOnly="true" pattern="#" groupingUsed="false" />
+			</p:inputText>
+			<ui:include src="/WEB-INF/includes/configHelp.xhtml">
+				<ui:param name="helpTextHtml" value="When a client uses a Selenium Client (locks the resource)  and does not send any Selenium Commands for more than this amount of seconds, it is treated as hung / lost / whatever. The active Selenium session is killed, the windows are closed, and the resource is set back to READY." />
+			</ui:include>
+		</p:panelGrid>
+		
+	</p:fieldset>
+</ui:composition>
+</html>
