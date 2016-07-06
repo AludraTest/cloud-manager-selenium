@@ -10,14 +10,14 @@
 	<parent>
 		<groupId>org.aludratest</groupId>
 		<artifactId>cloud-manager-parent</artifactId>
-		<version>1-SNAPSHOT</version>
+		<version>1</version>
 	</parent>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.aludratest</groupId>
 			<artifactId>cloud-manager-api</artifactId>
-			<version>1.0.0-SNAPSHOT</version>
+			<version>1.0.0</version>
 		</dependency>
 
 		<dependency>
