@@ -11,12 +11,16 @@
 		<artifactId>cloud-manager-parent</artifactId>
 		<version>1</version>
 	</parent>
+	
+	<properties>
+		<cloud.manager.api.version>1.0.0</cloud.manager.api.version>
+	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.aludratest</groupId>
 			<artifactId>cloud-manager-api</artifactId>
-			<version>1.0.0</version>
+			<version>${cloud.manager.api.version}</version>
 		</dependency>
 
 		<dependency>
