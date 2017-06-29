@@ -16,6 +16,7 @@
 	<h:panelGrid columns="2">
 		<p:selectOneListbox id="resources_list"
 			value="#{seleniumGroupBean.selectedResource}"
+			scrollHeight="#{seleniumGroupBean.calculateResourceBoxHeight}"
 			converter="#{seleniumGroupBean.resourcesConverter}"
 			style="height: #{seleniumGroupBean.calculateResourceBoxHeight}px; width: 300px">
 			<f:selectItems value="#{seleniumGroupBean.resourcesItems}" />
