@@ -59,7 +59,7 @@
 
 	<scm>
 		<connection>scm:git:https://git@github.com:AludraTest/cloud-manager-selenium.git</connection>
-		<developerConnection>scm:git:https://git@github.com/AludraTest/cloud-manager-selenium.git</developerConnection>
+		<developerConnection>scm:git:https://falbrech-hsdg@github.com/AludraTest/cloud-manager-selenium.git</developerConnection>
 		<url>https://github.com/AludraTest/cloud-manager-selenium.git</url>
 		<tag>HEAD</tag>
 	</scm>
