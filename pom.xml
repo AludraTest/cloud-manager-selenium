@@ -56,6 +56,15 @@
 		</dependency>
 
 	</dependencies>
+	
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 
 	<scm>
 		<connection>scm:git:https://git@github.com:AludraTest/cloud-manager-selenium.git</connection>
