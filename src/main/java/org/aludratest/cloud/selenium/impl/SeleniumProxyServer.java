@@ -61,6 +61,12 @@ public final class SeleniumProxyServer extends HttpResourceProxyServer<SeleniumH
 		super.start();
 		// register in JMS
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+		try {
+			mbs.unregisterMBean(new ObjectName("org.aludratest.cloud:00=selenium,type=SeleniumProxyServer"));
+		}
+		catch (Throwable t) {
+			// ignore
+		}
 		mbs.registerMBean(this, new ObjectName("org.aludratest.cloud:00=selenium,type=SeleniumProxyServer"));
 	}
 
@@ -103,7 +109,6 @@ public final class SeleniumProxyServer extends HttpResourceProxyServer<SeleniumH
 
 	@Override
 	public void removeProxy(SeleniumHttpProxy proxy) {
-		proxy.stopHealthCheck();
 		super.removeProxy(proxy);
 		updateHealthCheckExecutorSize();
 	}

@@ -15,6 +15,7 @@
  */
 package org.aludratest.cloud.selenium.impl;
 
+import org.aludratest.cloud.app.CloudManagerApp;
 import org.aludratest.cloud.config.ConfigException;
 import org.aludratest.cloud.config.Configurable;
 import org.aludratest.cloud.config.MainPreferences;
@@ -26,13 +27,16 @@ import org.aludratest.cloud.module.AbstractResourceModule;
 import org.aludratest.cloud.module.ResourceModule;
 import org.aludratest.cloud.resource.writer.ResourceWriterFactory;
 import org.aludratest.cloud.resourcegroup.ResourceGroup;
+import org.aludratest.cloud.resourcegroup.ResourceGroupManagerListener;
+import org.aludratest.cloud.selenium.SeleniumResource;
 import org.aludratest.cloud.selenium.SeleniumResourceType;
 import org.codehaus.plexus.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component(role = ResourceModule.class, hint = "selenium")
-public class SeleniumResourceModule extends AbstractResourceModule implements Configurable, PreferencesListener {
+public class SeleniumResourceModule extends AbstractResourceModule
+		implements Configurable, PreferencesListener, ResourceGroupManagerListener {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SeleniumResourceModule.class);
 
@@ -160,6 +164,9 @@ public class SeleniumResourceModule extends AbstractResourceModule implements Co
 
 		// update configuration
 		proxyServer.reconfigure(configuration);
+
+		// attach to resource group manager as listener, to notify resource groups when resources are removed
+		CloudManagerApp.getInstance().getResourceGroupManager().addResourceGroupManagerListener(this);
 	}
 
 	public void validateNonExistingSeleniumUrl(String url) throws ConfigException {
@@ -195,6 +202,21 @@ public class SeleniumResourceModule extends AbstractResourceModule implements Co
 	@Override
 	public void preferencesChanged(Preferences oldPreferences, MainPreferences newPreferences) throws ConfigException {
 		configure(newPreferences);
+	}
+
+	@Override
+	public void resourceGroupAdded(ResourceGroup group) {
+	}
+
+	@Override
+	public void resourceGroupRemoved(ResourceGroup group) {
+		// remove resources before removing group, to let them stop their proxy
+		if (group instanceof SeleniumResourceGroup) {
+			SeleniumResourceGroup selGroup = (SeleniumResourceGroup) group;
+			for (SeleniumResource res : selGroup.getResourceCollection()) {
+				selGroup.removeResource(res);
+			}
+		}
 	}
 
 }

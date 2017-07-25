@@ -136,9 +136,6 @@ class SeleniumHttpProxy extends HttpProxy implements HttpResourceProxy {
 		}
 
 		IOUtils.closeQuietly(healthCheckClient);
-	}
-
-	public void stopHealthCheck() {
 		stopped = true;
 	}
 

@@ -138,6 +138,7 @@ public abstract class HttpResourceProxyServer<T extends HttpResourceProxy, R ext
 			jettyServer.stop();
 			jettyServer.join();
 		}
+		this.port = newJettyPort;
 		createJetty(newJettyPort);
 		start();
 		updateProxyAccessUrls();
