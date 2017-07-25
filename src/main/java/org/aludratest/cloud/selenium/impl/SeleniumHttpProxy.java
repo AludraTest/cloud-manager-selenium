@@ -86,6 +86,8 @@ class SeleniumHttpProxy extends HttpProxy implements HttpResourceProxy {
 
 	private ScheduledFuture<?> nextHealthCheck;
 
+	private volatile boolean stopped;
+
 	private static final Pattern PATTERN_SESSION_ID_SEL1 = Pattern.compile("(^|&)sessionId=([^&]+)");
 
 	private static final Pattern PATTERN_SESSION_ID_SEL2 = Pattern.compile("/wd/hub/session/([^/]+)/");
@@ -134,6 +136,10 @@ class SeleniumHttpProxy extends HttpProxy implements HttpResourceProxy {
 		}
 
 		IOUtils.closeQuietly(healthCheckClient);
+	}
+
+	public void stopHealthCheck() {
+		stopped = true;
 	}
 
 	@Override
@@ -467,6 +473,10 @@ class SeleniumHttpProxy extends HttpProxy implements HttpResourceProxy {
 
 		@Override
 		public void run() {
+			if (stopped) {
+				return;
+			}
+
 			synchronized (this) {
 				nextHealthCheck = null;
 			}

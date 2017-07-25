@@ -103,6 +103,7 @@ public final class SeleniumProxyServer extends HttpResourceProxyServer<SeleniumH
 
 	@Override
 	public void removeProxy(SeleniumHttpProxy proxy) {
+		proxy.stopHealthCheck();
 		super.removeProxy(proxy);
 		updateHealthCheckExecutorSize();
 	}
