@@ -22,45 +22,46 @@ import org.aludratest.cloud.config.SimplePreferences;
 
 public class SeleniumModuleConfiguration {
 
+	public static final String PROP_PROXY_PORT = "port";
+
+	public static final String PROP_HEALTH_CHECK_INTERVAL = "healthCheckInterval";
+
+	public static final String PROP_MAX_IDLE_TIME = "maxIdleTimeBetweenCommands";
+
+	public static final String PROP_SELENIUM_TIMEOUT = "seleniumTimeout";
+
+	static final int DEFAULT_MAX_IDLE_TIME = 60;
+
 	private MutablePreferences configuration;
 
 	public SeleniumModuleConfiguration(Preferences configuration) {
 		// copy constructor to be indepdendent of configuration changes
 		this.configuration = new SimplePreferences(null);
+		fillDefaults(this.configuration);
 		ConfigUtil.copyPreferences(configuration, this.configuration);
 	}
 
 	public int getSeleniumProxyPort() {
-		return configuration.getIntValue("port", 5007);
+		return configuration.getIntValue(PROP_PROXY_PORT);
 	}
 
 	public int getHealthCheckIntervalSeconds() {
-		return configuration.getIntValue("healthCheckInterval", 15);
+		return configuration.getIntValue(PROP_HEALTH_CHECK_INTERVAL);
 	}
 
 	public int getMaxIdleTimeBetweenCommandsSeconds() {
-		return configuration.getIntValue("maxIdleTimeBetweenCommands", 60);
+		return configuration.getIntValue(PROP_MAX_IDLE_TIME);
 	}
 
 	public int getSeleniumTimeoutSeconds() {
-		return configuration.getIntValue("seleniumTimeout", 5);
-	}
-
-	public int getMaxProxyThreads() {
-		return configuration.getIntValue("maxProxyThreads", 150);
-	}
-
-	public int getMaxProxyQueueSize() {
-		return configuration.getIntValue("maxProxyQueueSize", 300);
+		return configuration.getIntValue(PROP_SELENIUM_TIMEOUT);
 	}
 
 	public static void fillDefaults(MutablePreferences preferences) {
 		preferences.setValue("port", 5007);
 		preferences.setValue("healthCheckInterval", 15);
-		preferences.setValue("maxIdleTimeBetweenCommands", 60);
+		preferences.setValue("maxIdleTimeBetweenCommands", DEFAULT_MAX_IDLE_TIME);
 		preferences.setValue("seleniumTimeout", 5);
-		preferences.setValue("maxProxyThreads", 150);
-		preferences.setValue("maxProxyQueueSize", 300);
 	}
 
 }

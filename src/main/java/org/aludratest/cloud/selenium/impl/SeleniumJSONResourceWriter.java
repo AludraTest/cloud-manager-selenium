@@ -24,6 +24,11 @@ import org.json.JSONObject;
 public class SeleniumJSONResourceWriter implements JSONResourceWriter {
 
 	@Override
+	public boolean canWrite(Resource resource) {
+		return resource instanceof SeleniumResource;
+	}
+
+	@Override
 	public JSONObject writeToJSON(Resource resource) throws JSONException {
 		if (!(resource instanceof SeleniumResource)) {
 			throw new IllegalArgumentException("This writer can only handle Selenium resources, but got resource of type "
@@ -34,6 +39,7 @@ public class SeleniumJSONResourceWriter implements JSONResourceWriter {
 
 		JSONObject result = new JSONObject();
 		result.put("url", selRes.getSeleniumUrl());
+		result.put("maintenanceMode", selRes.isInMaintenanceMode());
 
 		return result;
 	}

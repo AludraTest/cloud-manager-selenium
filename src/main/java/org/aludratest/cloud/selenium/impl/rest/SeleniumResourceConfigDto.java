@@ -13,15 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium;
+package org.aludratest.cloud.selenium.impl.rest;
 
-import org.aludratest.cloud.resource.Resource;
-import org.aludratest.cloud.resource.UsableResource;
+import javax.xml.bind.annotation.XmlRootElement;
 
-public interface SeleniumResource extends Resource, UsableResource {
+@XmlRootElement
+public class SeleniumResourceConfigDto {
 
-	public String getSeleniumUrl();
+	private String url;
 
-	public boolean isInMaintenanceMode();
+	private int maxSessions;
+
+	public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
+	}
+
+	public int getMaxSessions() {
+		return maxSessions;
+	}
+
+	public void setMaxSessions(int maxSessions) {
+		this.maxSessions = maxSessions;
+	}
 
 }

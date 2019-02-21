@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium;
+package org.aludratest.cloud.selenium.util;
 
-import org.aludratest.cloud.resource.Resource;
-import org.aludratest.cloud.resource.UsableResource;
+/**
+ * Interface to abstract from calls to <code>System.currentTimeMillis()</code>.
+ * This allows for easy testing of classes using system time information.
+ * 
+ * @author falbrech
+ *
+ */
+public interface SystemTimeService {
 
-public interface SeleniumResource extends Resource, UsableResource {
-
-	public String getSeleniumUrl();
-
-	public boolean isInMaintenanceMode();
+	public long getTimeMillis();
 
 }

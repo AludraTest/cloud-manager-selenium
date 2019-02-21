@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium;
+package org.aludratest.cloud.selenium.config;
 
-import org.aludratest.cloud.resource.Resource;
-import org.aludratest.cloud.resource.UsableResource;
+import org.aludratest.cloud.config.admin.ConfigurationAdmin;
 
-public interface SeleniumResource extends Resource, UsableResource {
+public interface SeleniumResourceModuleConfigAdmin extends ConfigurationAdmin {
 
-	public String getSeleniumUrl();
+	public void setSeleniumProxyPort(int port);
 
-	public boolean isInMaintenanceMode();
+	public void setHealthCheckIntervalSeconds(int healthCheckInterval);
+
+	public void setMaxIdleTimeBetweenCommandsSeconds(int maxIdleTime);
+
+	public void setSeleniumTimeoutSeconds(int timeout);
 
 }

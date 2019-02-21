@@ -15,48 +15,50 @@
  */
 package org.aludratest.cloud.selenium.impl.rest;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.StreamSupport;
 
-import org.aludratest.cloud.app.CloudManagerApp;
 import org.aludratest.cloud.config.ConfigException;
 import org.aludratest.cloud.resource.ResourceStateHolder;
 import org.aludratest.cloud.resourcegroup.ResourceGroup;
 import org.aludratest.cloud.resourcegroup.ResourceGroupManager;
-import org.aludratest.cloud.resourcegroup.StaticResourceGroupAdmin;
-import org.aludratest.cloud.rest.AbstractRestConnector;
-import org.aludratest.cloud.rest.RestConnector;
 import org.aludratest.cloud.selenium.config.ClientEntry;
+import org.aludratest.cloud.selenium.config.SeleniumResourceGroupAdmin;
+import org.aludratest.cloud.selenium.impl.ManagedRemoteSelenium;
 import org.aludratest.cloud.selenium.impl.SeleniumResourceGroup;
 import org.aludratest.cloud.selenium.impl.SeleniumResourceImpl;
-import org.aludratest.cloud.selenium.impl.SeleniumUtil;
-import org.codehaus.plexus.component.annotations.Component;
+import org.aludratest.cloud.web.rest.AbstractRestController;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-@Component(role = RestConnector.class, hint = "selenium-resource")
-@Path("/groups/{groupId: [0-9]{1,10}}/selenium/resources")
-public class SeleniumResourceEndpoint extends AbstractRestConnector {
+@RestController
+public class SeleniumResourceEndpoint extends AbstractRestController {
 
-	@GET
-	@Produces(JSON_TYPE)
-	public Response getResources(@PathParam("groupId") int groupId) throws JSONException {
-		ResourceGroupManager manager = CloudManagerApp.getInstance().getResourceGroupManager();
+	@Autowired
+	private ResourceGroupManager groupManager;
 
-		ResourceGroup group = manager.getResourceGroup(groupId);
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/resources", method = RequestMethod.GET, produces = JSON_TYPE)
+	public ResponseEntity<String> getResources(@PathVariable("groupId") int groupId) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
 		if (group == null || !(group instanceof SeleniumResourceGroup)) {
-			return Response.status(HttpServletResponse.SC_NOT_FOUND).build();
+			return ResponseEntity.notFound().build();
 		}
 
 		JSONArray arr = new JSONArray();
@@ -69,7 +71,6 @@ public class SeleniumResourceEndpoint extends AbstractRestConnector {
 			SeleniumResourceImpl res = (SeleniumResourceImpl) rsh;
 			JSONObject obj = new JSONObject();
 			obj.put("url", res.getOriginalUrl());
-			// TODO add name as soon as available
 			arr.put(obj);
 		}
 
@@ -79,125 +80,236 @@ public class SeleniumResourceEndpoint extends AbstractRestConnector {
 		return wrapResultObject(result);
 	}
 
-	@DELETE
-	@Produces(JSON_TYPE)
-	public Response deleteResource(@PathParam("groupId") int groupId, @QueryParam("url") String url) throws JSONException {
-		return doUrlAction(groupId, url, new SeleniumAdminAction() {
-			@Override
-			public void perform(ClientEntry entry, StaticResourceGroupAdmin<ClientEntry> admin) throws ConfigException {
-				admin.removeResource(entry);
-			}
-		});
-	}
-	
-	@PUT
-	@Consumes(FORM_TYPE)
-	@Produces(JSON_TYPE)
-	public Response addResource(@PathParam("groupId") int groupId, @FormParam("url") String url) throws JSONException {
-		// TODO add name as soon as available
-		ResourceGroupManager manager = CloudManagerApp.getInstance().getResourceGroupManager();
-
-		ResourceGroup group = manager.getResourceGroup(groupId);
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/config/resources", method = RequestMethod.PUT, consumes = FORM_TYPE, produces = JSON_TYPE)
+	public ResponseEntity<String> addResource(@PathVariable("groupId") int groupId,
+			@RequestParam("url") String seleniumUrl,
+			@RequestParam(name = "maxSessions", defaultValue = "1") int maxSessions) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
 		if (group == null || !(group instanceof SeleniumResourceGroup)) {
-			return Response.status(HttpServletResponse.SC_NOT_FOUND).build();
+			return ResponseEntity.notFound().build();
 		}
 
-		if (url == null || "".equals(url)) {
-			return createErrorObject(new IllegalArgumentException("You must specify an URL of the Selenium resource to add."));
+		SeleniumResourceGroupAdmin admin = ((SeleniumResourceGroup) group)
+				.getAdminInterface(SeleniumResourceGroupAdmin.class);
+		if (admin == null) {
+			return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
 		}
 
-		@SuppressWarnings("unchecked")
-		StaticResourceGroupAdmin<ClientEntry> admin = ((SeleniumResourceGroup) group)
-				.getAdminInterface(StaticResourceGroupAdmin.class);
-
-		try {
-			SeleniumUtil.validateSeleniumResourceNotExisting(url, admin, Integer.valueOf(groupId));
-		}
-		catch (ConfigException e) {
-			return createErrorObject(e);
-		}
-
-		ClientEntry ce = admin.addResource();
-		ce.setSeleniumUrl(url);
+		ClientEntry entry = admin.addResource();
+		entry.setSeleniumUrl(seleniumUrl);
+		entry.setMaxSessions(maxSessions);
 
 		try {
 			admin.commit();
-			return Response.status(HttpServletResponse.SC_CREATED).build();
+			return ResponseEntity.status(HttpStatus.CREATED).build();
+		} catch (ConfigException e) {
+			return createErrorObject("Could not add Selenium resource", e);
 		}
-		catch (ConfigException e) {
-			return createErrorObject(e);
-		}
 	}
 
-	@POST
-	@Path("/move/up")
-	@Consumes(FORM_TYPE)
-	@Produces(JSON_TYPE)
-	public Response moveResourceUp(@PathParam("groupId") int groupId, @FormParam("url") String url) throws JSONException {
-		return doUrlAction(groupId, url, new SeleniumAdminAction() {
-			@Override
-			public void perform(ClientEntry entry, StaticResourceGroupAdmin<ClientEntry> admin) throws ConfigException {
-				admin.moveUpResource(entry);
-			}
-		});
-	}
-
-	@POST
-	@Path("/move/down")
-	@Consumes(FORM_TYPE)
-	@Produces(JSON_TYPE)
-	public Response moveResourceDown(@PathParam("groupId") int groupId, @FormParam("url") String url) throws JSONException {
-		return doUrlAction(groupId, url, new SeleniumAdminAction() {
-			@Override
-			public void perform(ClientEntry entry, StaticResourceGroupAdmin<ClientEntry> admin) throws ConfigException {
-				admin.moveDownResource(entry);
-			}
-		});
-	}
-
-	private Response doUrlAction(int groupId, String url, SeleniumAdminAction action) throws JSONException {
-		ResourceGroupManager manager = CloudManagerApp.getInstance().getResourceGroupManager();
-
-		ResourceGroup group = manager.getResourceGroup(groupId);
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/config/resources", method = RequestMethod.GET, produces = JSON_TYPE)
+	public ResponseEntity<String> getResourceConfig(@PathVariable("groupId") int groupId) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
 		if (group == null || !(group instanceof SeleniumResourceGroup)) {
-			return Response.status(HttpServletResponse.SC_NOT_FOUND).build();
+			return ResponseEntity.notFound().build();
 		}
 
-		if (url == null || "".equals(url)) {
-			return createErrorObject(new IllegalArgumentException("You must specify an URL of the Selenium resource."));
+		List<ManagedRemoteSelenium> remoteSeleniums = ((SeleniumResourceGroup) group).getRemoteSeleniums();
+		JSONArray resources = new JSONArray();
+		for (ManagedRemoteSelenium res : remoteSeleniums) {
+			JSONObject obj = new JSONObject();
+			obj.put("url", res.getSeleniumUrl());
+			obj.put("maxSessions", res.getMaxSessions());
+			resources.put(obj);
 		}
 
-		@SuppressWarnings("unchecked")
-		StaticResourceGroupAdmin<ClientEntry> admin = ((SeleniumResourceGroup) group)
-				.getAdminInterface(StaticResourceGroupAdmin.class);
+		JSONObject result = new JSONObject();
+		result.put("resources", resources);
+		return wrapResultObject(result);
+	}
 
-		// find resource to delete
-		ClientEntry entry = null;
-		for (ClientEntry ce : admin.getConfiguredResources()) {
-			if (url.equals(ce.getSeleniumUrl())) {
-				entry = ce;
-				break;
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/config/resources", method = RequestMethod.POST, consumes = JSON_TYPE, produces = JSON_TYPE)
+	public ResponseEntity<String> setResourceConfig(@PathVariable("groupId") int groupId,
+			@RequestBody List<SeleniumResourceConfigDto> newResources) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
+		if (group == null || !(group instanceof SeleniumResourceGroup)) {
+			return ResponseEntity.notFound().build();
+		}
+
+		SeleniumResourceGroupAdmin admin = ((SeleniumResourceGroup) group)
+				.getAdminInterface(SeleniumResourceGroupAdmin.class);
+		if (admin == null) {
+			return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
+		}
+
+		// build map for a sensible update, to avoid removing and adding all config
+		// entries, which would restart lots of threads, proxy servers etc.
+		Map<String, SeleniumResourceConfigDto> newResourcesByUrl = new LinkedHashMap<>();
+		newResources.forEach(r -> newResourcesByUrl.put(r.getUrl(), r));
+
+		List<ClientEntry> configResources = new ArrayList<>();
+		admin.getConfiguredResources().forEach(configResources::add);
+
+		List<String> desiredUrlOrder = new ArrayList<>(newResourcesByUrl.keySet());
+
+		List<String> urlsToRemove = new ArrayList<>();
+
+		for (ClientEntry ce : new ArrayList<>(configResources)) {
+			SeleniumResourceConfigDto dto = newResourcesByUrl.get(ce.getSeleniumUrl());
+			if (dto != null) {
+				ce.setMaxSessions(dto.getMaxSessions());
+				newResourcesByUrl.remove(ce.getSeleniumUrl());
+			} else {
+				urlsToRemove.add(ce.getSeleniumUrl());
 			}
 		}
 
-		if (entry == null) {
-			return createErrorObject(new IllegalArgumentException("No Selenium resource with this URL found in this group."));
+		// ugly loop, but required due to ClientEntry internal working
+		for (String url : urlsToRemove) {
+			for (ClientEntry ce : admin.getConfiguredResources()) {
+				if (url.equals(ce.getSeleniumUrl())) {
+					admin.removeResource(ce);
+					break;
+				}
+			}
+		}
+
+		for (SeleniumResourceConfigDto dto : newResourcesByUrl.values()) {
+			ClientEntry ce = admin.addResource();
+			ce.setSeleniumUrl(dto.getUrl());
+			ce.setMaxSessions(dto.getMaxSessions());
+		}
+
+		sortResources(admin, desiredUrlOrder);
+
+		try {
+			admin.commit();
+			return getResourceConfig(groupId);
+		} catch (ConfigException ce) {
+			return createErrorObject("Could not configure Selenium resources", ce);
+		}
+	}
+
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/config/resources", method = RequestMethod.DELETE, produces = JSON_TYPE)
+	public ResponseEntity<String> deleteConfiguredResource(@PathVariable("groupId") int groupId,
+			@RequestParam(name = "url", required = true) String url) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
+		if (group == null || !(group instanceof SeleniumResourceGroup)) {
+			return ResponseEntity.notFound().build();
+		}
+
+		SeleniumResourceGroupAdmin admin = ((SeleniumResourceGroup) group)
+				.getAdminInterface(SeleniumResourceGroupAdmin.class);
+		if (admin == null) {
+			return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).build();
+		}
+
+		Optional<ClientEntry> toDelete = StreamSupport.stream(admin.getConfiguredResources().spliterator(), false)
+				.filter(ce -> url.equalsIgnoreCase(ce.getSeleniumUrl())).findFirst();
+		if (!toDelete.isPresent()) {
+			return ResponseEntity.notFound().build();
+		}
+		admin.removeResource(toDelete.get());
+
+		try {
+			admin.commit();
+			return ResponseEntity.noContent().build();
+		} catch (ConfigException ce) {
+			return createErrorObject("Could not remove Selenium resource", ce);
+		}
+	}
+
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/screenshot", method = RequestMethod.GET, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+	public ResponseEntity<byte[]> takeScreenshot(@PathVariable("groupId") int groupId,
+			@RequestParam(name = "url", required = true) String url) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
+		if (group == null || !(group instanceof SeleniumResourceGroup)) {
+			return ResponseEntity.notFound().build();
+		}
+
+		SeleniumResourceGroup seleniumGroup = (SeleniumResourceGroup) group;
+
+		ManagedRemoteSelenium selenium = seleniumGroup.getRemoteSeleniums().stream()
+				.filter(mrs -> containsUrl(mrs, url)).findFirst().orElse(null);
+		if (selenium == null) {
+			return ResponseEntity.notFound().build();
 		}
 
 		try {
-			action.perform(entry, admin);
-			admin.commit();
-			return getResources(groupId);
-		}
-		catch (ConfigException e) {
-			return createErrorObject(e);
+			return ResponseEntity.ok(selenium.takeScreenshot());
+		} catch (IOException e) {
+			return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
 		}
 	}
 
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+	@RequestMapping(value = "/api/groups/{groupId}/selenium/maintenance", method = RequestMethod.POST)
+	public ResponseEntity<byte[]> setMaintenanceMode(@PathVariable("groupId") int groupId,
+			@RequestParam(name = "url", required = true) String url,
+			@RequestParam(name = "maintenance", required = false) Boolean maintenanceMode) {
+		ResourceGroup group = groupManager.getResourceGroup(groupId);
+		if (group == null || !(group instanceof SeleniumResourceGroup)) {
+			return ResponseEntity.notFound().build();
+		}
 
-	private static interface SeleniumAdminAction {
+		SeleniumResourceGroup seleniumGroup = (SeleniumResourceGroup) group;
 
-		public void perform(ClientEntry entry, StaticResourceGroupAdmin<ClientEntry> admin) throws ConfigException;
+		ManagedRemoteSelenium selenium = seleniumGroup.getRemoteSeleniums().stream()
+				.filter(mrs -> containsUrl(mrs, url)).findFirst().orElse(null);
+		if (selenium == null) {
+			return ResponseEntity.notFound().build();
+		}
 
+		// if maintenance mode is not set, toggle it
+		if (maintenanceMode == null) {
+			selenium.toggleMaintenanceMode();
+		} else {
+			selenium.setMaintenanceMode(maintenanceMode);
+		}
+		return ResponseEntity.ok().build();
+	}
+
+	private void sortResources(SeleniumResourceGroupAdmin admin, List<String> newUrlOrder) {
+		List<ClientEntry> configResources = new ArrayList<>();
+		admin.getConfiguredResources().forEach(configResources::add);
+
+		while (!equalsOrder(configResources, newUrlOrder)) {
+			for (int idx1 = 0; idx1 < configResources.size(); idx1++) {
+				ClientEntry ce = configResources.get(idx1);
+				int idx2 = newUrlOrder.indexOf(ce.getSeleniumUrl());
+				if (idx2 != idx1) {
+					while (idx2 > idx1) {
+						admin.moveDownResource(ce);
+						idx2--;
+					}
+					while (idx2 < idx1) {
+						admin.moveUpResource(ce);
+						idx2++;
+					}
+					break;
+				}
+			}
+			configResources.clear();
+			admin.getConfiguredResources().forEach(configResources::add);
+		}
+	}
+
+	private boolean equalsOrder(List<ClientEntry> configResources, List<String> urlOrder) {
+		for (int i = 0; i < configResources.size(); i++) {
+			if (i != urlOrder.indexOf(configResources.get(i).getSeleniumUrl())) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private boolean containsUrl(ManagedRemoteSelenium selenium, String url) {
+		return selenium.getResources().stream().filter(res -> url.equals(res.getSeleniumUrl())).findAny().isPresent();
 	}
 }

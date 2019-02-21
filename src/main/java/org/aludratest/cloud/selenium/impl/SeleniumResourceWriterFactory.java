@@ -15,13 +15,15 @@
  */
 package org.aludratest.cloud.selenium.impl;
 
-import org.codehaus.plexus.component.annotations.Component;
 import org.aludratest.cloud.resource.writer.JSONResourceWriter;
 import org.aludratest.cloud.resource.writer.ResourceWriter;
 import org.aludratest.cloud.resource.writer.ResourceWriterFactory;
 import org.aludratest.cloud.resource.writer.XmlResourceWriter;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
-@Component(role = ResourceWriterFactory.class, hint = "selenium")
+@Component
+@Qualifier("selenium")
 public class SeleniumResourceWriterFactory implements ResourceWriterFactory {
 
 	@SuppressWarnings("unchecked")

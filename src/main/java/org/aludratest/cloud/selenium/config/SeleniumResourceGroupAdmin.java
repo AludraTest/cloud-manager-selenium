@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium.impl;
+package org.aludratest.cloud.selenium.config;
 
-import javax.servlet.Servlet;
+import org.aludratest.cloud.resourcegroup.StaticResourceGroupAdmin;
 
-public interface HttpResourceProxy extends Servlet {
-
-	public int getId();
-
-	public String getAccessUrl();
+public interface SeleniumResourceGroupAdmin extends StaticResourceGroupAdmin<ClientEntry> {
 
 }

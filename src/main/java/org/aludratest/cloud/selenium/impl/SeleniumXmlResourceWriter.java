@@ -40,4 +40,9 @@ public class SeleniumXmlResourceWriter implements XmlResourceWriter {
 		writer.writeEndElement(); // resource
 	}
 
+	@Override
+	public boolean canWrite(Resource resource) {
+		return resource instanceof SeleniumResource;
+	}
+
 }

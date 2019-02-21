@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium;
+package org.aludratest.cloud.selenium.util;
 
-import org.aludratest.cloud.resource.Resource;
-import org.aludratest.cloud.resource.UsableResource;
+public class DefaultSystemTimeService implements SystemTimeService {
 
-public interface SeleniumResource extends Resource, UsableResource {
-
-	public String getSeleniumUrl();
-
-	public boolean isInMaintenanceMode();
+	@Override
+	public long getTimeMillis() {
+		return System.currentTimeMillis();
+	}
 
 }

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.aludratest.cloud.selenium;
+package org.aludratest.cloud.selenium.impl;
 
-import org.aludratest.cloud.resource.Resource;
-import org.aludratest.cloud.resource.UsableResource;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpUriRequest;
 
-public interface SeleniumResource extends Resource, UsableResource {
+public interface HttpCommunicationsListener {
 
-	public String getSeleniumUrl();
+	public void requestAboutToBeSent(HttpUriRequest request, byte[] cachedRequestBody);
 
-	public boolean isInMaintenanceMode();
+	public void responseComplete(HttpResponse response, byte[] cachedResponseBody);
 
 }

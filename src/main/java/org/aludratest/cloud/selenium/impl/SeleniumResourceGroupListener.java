@@ -15,8 +15,10 @@
  */
 package org.aludratest.cloud.selenium.impl;
 
-public interface SeleniumProxyServerMBean {
+public interface SeleniumResourceGroupListener {
 
-	public int getProxyThreadCount();
+	public void remoteSeleniumAdded(ManagedRemoteSelenium remoteSelenium);
+
+	public void remoteSeleniumRemoved(ManagedRemoteSelenium remoteSelenium);
 
 }

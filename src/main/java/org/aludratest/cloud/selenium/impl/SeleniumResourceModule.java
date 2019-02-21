@@ -15,40 +15,58 @@
  */
 package org.aludratest.cloud.selenium.impl;
 
-import org.aludratest.cloud.app.CloudManagerApp;
 import org.aludratest.cloud.config.ConfigException;
+import org.aludratest.cloud.config.ConfigManager;
 import org.aludratest.cloud.config.Configurable;
 import org.aludratest.cloud.config.MainPreferences;
 import org.aludratest.cloud.config.MutablePreferences;
 import org.aludratest.cloud.config.Preferences;
 import org.aludratest.cloud.config.PreferencesListener;
+import org.aludratest.cloud.config.admin.AbstractConfigurationAdmin;
 import org.aludratest.cloud.config.admin.ConfigurationAdmin;
 import org.aludratest.cloud.module.AbstractResourceModule;
-import org.aludratest.cloud.module.ResourceModule;
 import org.aludratest.cloud.resource.writer.ResourceWriterFactory;
 import org.aludratest.cloud.resourcegroup.ResourceGroup;
-import org.aludratest.cloud.resourcegroup.ResourceGroupManagerListener;
-import org.aludratest.cloud.selenium.SeleniumResource;
+import org.aludratest.cloud.resourcegroup.ResourceGroupManager;
 import org.aludratest.cloud.selenium.SeleniumResourceType;
-import org.codehaus.plexus.component.annotations.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.aludratest.cloud.selenium.config.SeleniumResourceModuleConfigAdmin;
+import org.aludratest.cloud.user.admin.UserDatabaseRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
 
-@Component(role = ResourceModule.class, hint = "selenium")
+@Component("org.aludratest.cloud.module.ResourceModule")
+@Qualifier("selenium")
 public class SeleniumResourceModule extends AbstractResourceModule
-		implements Configurable, PreferencesListener, ResourceGroupManagerListener {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(SeleniumResourceModule.class);
+		implements Configurable, PreferencesListener {
 
 	private SeleniumResourceWriterFactory writerFactory = new SeleniumResourceWriterFactory();
-	
-	private SeleniumProxyServer proxyServer;
 
 	private SeleniumModuleConfiguration configuration;
 
 	private MainPreferences preferences;
 
-	private String hostName = "localhost";
+	private ConfigManager configManager;
+
+	private UserDatabaseRegistry userDatabaseRegistry;
+
+	private WebDriverProxyServer webDriverProxyServer;
+
+	private SeleniumHealthCheckService healthCheckService;
+
+	private ApplicationContext applicationContext;
+
+	@Autowired
+	public SeleniumResourceModule(ConfigManager configManager, UserDatabaseRegistry userDatabaseRegistry,
+			WebDriverProxyServer webDriverProxyServer,
+			SeleniumHealthCheckService healthCheckService, ApplicationContext applicationContext) {
+		this.configManager = configManager;
+		this.userDatabaseRegistry = userDatabaseRegistry;
+		this.webDriverProxyServer = webDriverProxyServer;
+		this.healthCheckService = healthCheckService;
+		this.applicationContext = applicationContext;
+	}
 
 	@Override
 	public SeleniumResourceType getResourceType() {
@@ -62,16 +80,12 @@ public class SeleniumResourceModule extends AbstractResourceModule
 
 	@Override
 	public ResourceGroup createResourceGroup() {
-		return new SeleniumResourceGroup();
+		return new SeleniumResourceGroup(configManager, userDatabaseRegistry);
 	}
 
 	@Override
 	public ResourceWriterFactory getResourceWriterFactory() {
 		return writerFactory;
-	}
-
-	public SeleniumProxyServer getProxyServer() {
-		return proxyServer;
 	}
 
 	@Override
@@ -81,12 +95,7 @@ public class SeleniumResourceModule extends AbstractResourceModule
 
 	@Override
 	public void validateConfiguration(Preferences preferences) throws ConfigException {
-		int maxThreadSize = preferences.getIntValue("maxProxyThreads", 150);
-		if (maxThreadSize < 5) {
-			throw new ConfigException("Max Thread Count for Selenium Proxy Server must be greater than 5.");
-		}
-
-		// TODO Auto-generated method stub
+		internalValidateConfig(preferences);
 	}
 
 	@Override
@@ -96,101 +105,54 @@ public class SeleniumResourceModule extends AbstractResourceModule
 		}
 		this.preferences = preferences;
 		preferences.addPreferencesListener(this);
-		
-		// attach a listener for when the host name changes
-		if (preferences.getParent() != null && preferences.getParent().getParent() != null) {
-			MainPreferences basic = preferences.getParent().getParent().getChildNode("basic");
-			if (basic != null) {
-				basic.addPreferencesListener(new PreferencesListener() {
-					@Override
-					public void preferencesChanged(Preferences oldPreferences, MainPreferences newPreferences)
-							throws ConfigException {
-						String oldHostName = getHostNameFromBasicPreferences(oldPreferences);
-						String newHostName = getHostNameFromBasicPreferences(newPreferences);
-						if (!oldHostName.equals(newHostName)) {
-							handleHostNameChanged(newHostName);
-						}
-
-						// also update Proxy configuration of SHP
-						SeleniumHttpProxy.updateProxyConfig();
-					}
-
-					@Override
-					public void preferencesAboutToChange(Preferences oldPreferences, Preferences newPreferences)
-							throws ConfigException {
-					}
-				});
-				hostName = getHostNameFromBasicPreferences(basic);
-			}
-		}
-
-
 		configure(preferences);
-	}
-
-	private String getHostNameFromBasicPreferences(Preferences basicPreferences) {
-		return basicPreferences.getStringValue("hostName", "localhost");
-	}
-
-	private void handleHostNameChanged(String newHostName) {
-		hostName = newHostName;
-		if (proxyServer != null) {
-			proxyServer.updateHostName(newHostName);
-		}
-
 	}
 
 	private void configure(MainPreferences preferences) throws ConfigException {
 		configuration = new SeleniumModuleConfiguration(preferences);
 
-		if (proxyServer == null) {
-			proxyServer = new SeleniumProxyServer(configuration, hostName);
+		if (!webDriverProxyServer.isRunning()) {
 			try {
-				proxyServer.start();
-			}
-			catch (Exception e) {
-				throw new ConfigException("Could not startup Selenium Proxy Server", e);
+				webDriverProxyServer.start(configuration.getSeleniumProxyPort());
+			} catch (Exception e) {
+				throw new ConfigException(
+						"Could not start proxy server on port " + configuration.getSeleniumProxyPort(), "port", e);
 			}
 		}
-		else if (proxyServer.getPort() != configuration.getSeleniumProxyPort()) {
-			// restart Jetty server, if required
-			try {
-				proxyServer.restartJetty(configuration.getSeleniumProxyPort());
-			}
-			catch (Exception e) {
-				LOGGER.warn("Exception when restarting Selenium proxy server", e);
-			}
+		else if (configuration.getSeleniumProxyPort() != webDriverProxyServer.getPort()) {
+			webDriverProxyServer.moveToPort(configuration.getSeleniumProxyPort());
 		}
 
-		// update configuration
-		proxyServer.reconfigure(configuration);
+		if (!healthCheckService.isRunning()) {
+			// use the application context to resolve the ResourceGroupManager to avoid
+			// cyclic dependency
+			healthCheckService.start(applicationContext.getBean(ResourceGroupManager.class));
+		}
 
-		// attach to resource group manager as listener, to notify resource groups when resources are removed
-		CloudManagerApp.getInstance().getResourceGroupManager().addResourceGroupManagerListener(this);
+		healthCheckService.setHealthCheckIntervalSeconds(configuration.getHealthCheckIntervalSeconds());
+		healthCheckService.setOrphanedTimeoutSeconds(configuration.getMaxIdleTimeBetweenCommandsSeconds());
+		healthCheckService.setSeleniumTimeoutSeconds(configuration.getSeleniumTimeoutSeconds());
 	}
 
-	public void validateNonExistingSeleniumUrl(String url) throws ConfigException {
-
+	public SeleniumModuleConfiguration getConfiguration() {
+		return configuration;
 	}
 
 	@Override
 	public <T extends ConfigurationAdmin> T getAdminInterface(Class<T> ifaceClass) {
-		// TODO create admin interface for Selenium
+		if (ifaceClass == SeleniumResourceModuleConfigAdmin.class) {
+			return ifaceClass.cast(new SeleniumResourceModuleConfigAdminImpl(preferences, configManager));
+		}
 		return null;
 	}
 
 	@Override
 	public void handleApplicationShutdown() {
-		// stop proxy server, if any
-		if (proxyServer != null) {
-			try {
-				proxyServer.shutdown();
-			}
-			catch (Exception e) {
-				LOGGER.warn("Exception when shutting down Selenium Proxy Server", e);
-			}
-		}
+		try {
+			webDriverProxyServer.stop();
+		} catch (Exception e) {
 
+		}
 		super.handleApplicationShutdown();
 	}
 
@@ -204,19 +166,63 @@ public class SeleniumResourceModule extends AbstractResourceModule
 		configure(newPreferences);
 	}
 
-	@Override
-	public void resourceGroupAdded(ResourceGroup group) {
-	}
+	private static void internalValidateConfig(Preferences preferences) throws ConfigException {
+		int value = preferences.getIntValue(SeleniumModuleConfiguration.PROP_PROXY_PORT);
+		if (value < 1 || value > 65535) {
+			throw new ConfigException("Selenium proxy port must be between 1 and 65535",
+					SeleniumModuleConfiguration.PROP_PROXY_PORT);
+		}
 
-	@Override
-	public void resourceGroupRemoved(ResourceGroup group) {
-		// remove resources before removing group, to let them stop their proxy
-		if (group instanceof SeleniumResourceGroup) {
-			SeleniumResourceGroup selGroup = (SeleniumResourceGroup) group;
-			for (SeleniumResource res : selGroup.getResourceCollection()) {
-				selGroup.removeResource(res);
-			}
+		value = preferences.getIntValue(SeleniumModuleConfiguration.PROP_HEALTH_CHECK_INTERVAL);
+		if (value < 3 || value > 600) {
+			throw new ConfigException("Health Check Interval must be between 3 and 600 seconds",
+					SeleniumModuleConfiguration.PROP_HEALTH_CHECK_INTERVAL);
+		}
+
+		value = preferences.getIntValue(SeleniumModuleConfiguration.PROP_MAX_IDLE_TIME);
+		if (value < 5 || value > 3600) {
+			throw new ConfigException("Max. idle time must be between 5 and 3600 seconds",
+					SeleniumModuleConfiguration.PROP_MAX_IDLE_TIME);
+		}
+
+		value = preferences.getIntValue(SeleniumModuleConfiguration.PROP_SELENIUM_TIMEOUT);
+		if (value < 3 || value > 600) {
+			throw new ConfigException("Selenium connect timeout must be between 3 and 600 seconds",
+					SeleniumModuleConfiguration.PROP_SELENIUM_TIMEOUT);
 		}
 	}
 
+	private static class SeleniumResourceModuleConfigAdminImpl extends AbstractConfigurationAdmin
+			implements SeleniumResourceModuleConfigAdmin {
+
+		protected SeleniumResourceModuleConfigAdminImpl(MainPreferences mainPreferences, ConfigManager configManager) {
+			super(mainPreferences, configManager);
+		}
+
+		@Override
+		public void setSeleniumProxyPort(int port) {
+			getPreferences().setValue(SeleniumModuleConfiguration.PROP_PROXY_PORT, port);
+		}
+
+		@Override
+		public void setHealthCheckIntervalSeconds(int healthCheckInterval) {
+			getPreferences().setValue(SeleniumModuleConfiguration.PROP_HEALTH_CHECK_INTERVAL, healthCheckInterval);
+		}
+
+		@Override
+		public void setMaxIdleTimeBetweenCommandsSeconds(int maxIdleTime) {
+			getPreferences().setValue(SeleniumModuleConfiguration.PROP_MAX_IDLE_TIME, maxIdleTime);
+		}
+
+		@Override
+		public void setSeleniumTimeoutSeconds(int timeout) {
+			getPreferences().setValue(SeleniumModuleConfiguration.PROP_SELENIUM_TIMEOUT, timeout);
+		}
+
+		@Override
+		protected void validateConfig(Preferences preferences) throws ConfigException {
+			internalValidateConfig(preferences);
+		}
+
+	}
 }

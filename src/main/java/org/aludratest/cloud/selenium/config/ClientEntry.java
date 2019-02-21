@@ -34,9 +34,22 @@ public class ClientEntry extends AbstractConfigNodeBased {
 		return getConfigNode().getStringValue("seleniumUrl");
 	}
 
+	public void setMaxSessions(int maxSessions) {
+		getConfigNode().setValue("maxSessions", maxSessions);
+	}
+
+	public int getMaxSessions() {
+		return getConfigNode().getIntValue("maxSessions", 1);
+	}
+
 	@Override
 	protected String getConfigNodeName(int id) {
 		return PREFIX + id;
+	}
+
+	@Override
+	public String toString() {
+		return getSeleniumUrl() + " (max. " + getMaxSessions() + " session(s))";
 	}
 
 }
